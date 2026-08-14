@@ -58,7 +58,6 @@ tasks {
     processResources {
         filesMatching("META-INF/neoforge.mods.toml") {
             expand(mapOf("version" to version))
-            expand(mapOf("description" to rootProject.property("description") as String))
         }
     }
 

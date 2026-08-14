@@ -53,7 +53,6 @@ tasks {
     processResources {
         filesMatching("fabric.mod.json") {
             expand(mapOf("version" to version))
-            expand(mapOf("description" to rootProject.property("description") as String))
         }
     }
 

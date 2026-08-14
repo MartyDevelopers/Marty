@@ -8,7 +8,7 @@ modId = "marty"
 version = "${version}"
 displayName = "Marty"
 description = '''
-${description}
+MapartCraft but better and as a mod.
 '''
 #logoFile = ""
 

@@ -3,7 +3,7 @@
   "id": "marty",
   "version": "${version}",
   "name": "Marty",
-  "description": "${description}",
+  "description": "MapartCraft but better and as a mod.",
   "contact": {
     "sources": "https://github.com/MartyDevelopers/Marty"
   },
