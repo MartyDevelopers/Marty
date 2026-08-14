@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "marty",
+  "version": "${version}",
+  "name": "Marty",
+  "description": "${description}",
+  "contact": {
+    "sources": "https://github.com/MartyDevelopers/Marty"
+  },
+  "license": "CC0-1.0",
+  "icon": "assets/marty/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "martydevs.marty.fabric.MartyFabric"
+    ],
+    "client": [
+      "martydevs.marty.fabric.client.MartyFabricClient"
+    ]
+  },
+  "mixins": [
+    "marty.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "architectury": ">=21.0.7",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}
