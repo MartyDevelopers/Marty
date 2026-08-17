@@ -3,21 +3,16 @@ package martydevs.marty.model.image;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.MapColor;
 import org.jetbrains.annotations.Unmodifiable;
+import org.jspecify.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public interface BlockPalette {
 
     static BlockPalette createPalette(Set<Block> blocks) {
-        Map<MapColor, Set<Block>> palette = new HashMap<>();
+        Map<MapColor, Block> palette = new HashMap<>();
         for (Block block : blocks) {
-            palette.computeIfAbsent(
-                    block.defaultMapColor(),
-                    (_) -> new HashSet<>()
-            ).add(block);
+            palette.put(block.defaultMapColor(), block);
         }
         return new BlockPaletteImpl(palette);
     }
@@ -26,33 +21,17 @@ public interface BlockPalette {
     Set<MapColor> allColors();
 
     @Unmodifiable
-    Set<Block> allBlocks();
+    Block blockForColor(MapColor color);
 
     @Unmodifiable
-    Set<Block> blocksPerColor(MapColor color);
+    Collection<Block> allBlocks();
 
     class BlockPaletteImpl implements BlockPalette {
 
-        private final Map<MapColor, Set<Block>> palette;
-        private final Set<Block> allBlocks;
+        private final Map<MapColor, Block> palette;
 
-        BlockPaletteImpl(Map<MapColor, Set<Block>> palette) {
-            @SuppressWarnings("unchecked") Map.Entry<MapColor, Set<Block>>[] entries = new Map.Entry[palette.size()];
-
-            var iterator = palette.entrySet().iterator();
-            int index = 0;
-            while (iterator.hasNext()) {
-                var entry = iterator.next();
-                entries[index++] = Map.entry(entry.getKey(), Set.copyOf(entry.getValue()));
-            }
-
-            this.palette = Map.ofEntries(entries);
-
-            Set<Block> blocks = new HashSet<>();
-            for (Set<Block> subSet : this.palette.values()) {
-                blocks.addAll(subSet);
-            }
-            this.allBlocks = Set.copyOf(blocks);
+        BlockPaletteImpl(Map<MapColor, Block> palette) {
+            this.palette = Map.copyOf(palette);
         }
 
         @Override
@@ -61,13 +40,13 @@ public interface BlockPalette {
         }
 
         @Override
-        public Set<Block> allBlocks() {
-            return allBlocks;
+        public @Nullable Block blockForColor(MapColor color) {
+            return palette.get(color);
         }
 
         @Override
-        public Set<Block> blocksPerColor(MapColor color) {
-            return palette.getOrDefault(color, Set.of());
+        public Collection<Block> allBlocks() {
+            return palette.values();
         }
 
     }

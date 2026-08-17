@@ -16,8 +16,23 @@ public interface ImageWork extends Work<MapArtImage> {
 
     boolean useStairCasing();
 
-    @Nullable Dithering ditheringAlgorithm();
+    @Nullable Dithering dithering();
 
     Cropping cropping();
+
+    boolean useTransparency();
+
+    WaterPalette waterPalette();
+
+    record ImageWorkImpl(
+            BufferedImage image,
+            BlockPalette blockPalette,
+            Vector2ic outputDimensionsInMaps,
+            boolean useStairCasing,
+            @Nullable Dithering dithering,
+            Cropping cropping,
+            boolean useTransparency,
+            WaterPalette waterPalette
+    ) implements ImageWork {}
 
 }
