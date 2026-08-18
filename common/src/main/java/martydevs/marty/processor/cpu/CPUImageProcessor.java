@@ -19,7 +19,9 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -135,8 +137,6 @@ public final class CPUImageProcessor implements ImageProcessor {
                         palette
                 );
 
-                System.out.printf("%s %s: %s\n", x, y, palette[nearestIndex]);
-
                 if(paletteIncludesWater) {
                     int waterColorIndex = MapColorHelper.waterColorIndex(palette[nearestIndex]);
                     if(waterColorIndex != -1 && waterColorIndex < lowestWaterColorIndex)
@@ -219,14 +219,15 @@ public final class CPUImageProcessor implements ImageProcessor {
                     int mapOriginY = mapY * MAP_SIZE;
 
                     BlockPalette blockPalette = work.blockPalette();
-                    BlockState[][][] blocks = new BlockState[MAP_SIZE][height][MAP_SIZE];
+                    Map<Integer, BlockState> blocks = new HashMap<>(MAP_SIZE * MAP_SIZE);
 
                     int highestYIndex = height - 1;
                     for (int blockX = 0; blockX < MAP_SIZE; blockX++) {
                         for (int blockZ = 0; blockZ < MAP_SIZE; blockZ++) {
+                            int encodedCoordinates = MapArtImage.encodedBlockCoordinates(blockX, highestYIndex, blockZ);
                             int colorIndex = paletteIndices[mapOriginX + blockX][mapOriginY + blockZ];
                             if(colorIndex == -1) {
-                                blocks[blockX][highestYIndex][blockZ] = GLASS_BLOCK_STATE;
+                                blocks.put(encodedCoordinates, GLASS_BLOCK_STATE);
                                 continue;
                             }
 
@@ -238,7 +239,10 @@ public final class CPUImageProcessor implements ImageProcessor {
                                 BlockState state = work.waterPalette().leaves().defaultBlockState()
                                         .setValue(BlockStateProperties.WATERLOGGED, true);
                                 for (int blockY = 0; blockY < waterHeight; blockY++) {
-                                    blocks[blockX][highestYIndex - blockY][blockZ] = state;
+                                    blocks.put(
+                                            MapArtImage.encodedBlockCoordinates(blockX, highestYIndex - blockY, blockZ),
+                                            state
+                                    );
                                 }
                                 continue;
                             }
@@ -246,15 +250,15 @@ public final class CPUImageProcessor implements ImageProcessor {
                             MapColor color = MapColorHelper.colorByRgbValue(rgb);
                             assert color != null;
                             Block block = blockPalette.blockForColor(color);
-                            if(block == null) {
-                                System.out.println("Failed color: " + colorIndex);
-                            }
 
-                            blocks[blockX][highestYIndex][blockZ] = block.defaultBlockState();
+                            blocks.put(
+                                    encodedCoordinates,
+                                    block.defaultBlockState()
+                            );
                         }
                     }
 
-                    maps[mapX][mapY] = new MapArtImage.FlatMap(blocks);
+                    maps[mapX][mapY] = new MapArtImage.Map(blocks, height);
                 }
             }
         }

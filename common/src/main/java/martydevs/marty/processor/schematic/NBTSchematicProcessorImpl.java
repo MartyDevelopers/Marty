@@ -7,15 +7,14 @@ import net.minecraft.SharedConstants;
 import net.minecraft.nbt.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import org.joml.Vector2ic;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.zip.GZIPOutputStream;
 
 public final class NBTSchematicProcessorImpl implements NBTSchematicProcessor {
 
@@ -38,42 +37,61 @@ public final class NBTSchematicProcessorImpl implements NBTSchematicProcessor {
     }
 
     private InputStream doWork(NBTSchematicWork work) {
-        Vector2ic dimensionsInMaps = work.source().dimensionsInMaps();
+        MapArtImage source = work.source();
+        Vector2ic dimensionsInMaps = source.dimensionsInMaps();
+
         int width = MAP_SIZE * dimensionsInMaps.x();
         int height = 1;
         int length = MAP_SIZE * dimensionsInMaps.y();
-        MapArtImage.Map[][] maps = work.source().maps();
-        if(maps[0][0] instanceof MapArtImage.FlatMap) {
-            for (MapArtImage.Map[] row : maps) {
-                for (MapArtImage.Map map : row) {
-                    MapArtImage.FlatMap flatMap = (MapArtImage.FlatMap) map;
-                    int mapHeight = flatMap.blockStates()[0].length;
-                    if (mapHeight > height) height = mapHeight;
-                }
+
+        MapArtImage.Map[][] maps = source.maps();
+        for (MapArtImage.Map[] row : maps) {
+            for (MapArtImage.Map map : row) {
+                if (map.height() > height) height = map.height();
             }
-        }
-        else {
-            // staircase maps
-            throw new UnsupportedOperationException();
         }
 
         CompoundTag rootTag = new CompoundTag();
         List<BlockState> palette = new ArrayList<>();
 
         ListTag blocklist = new ListTag();
+        /*
+        for (MapArtImage.Map[] column : maps) {
+            for (MapArtImage.Map map : column) {
+                for (Map.Entry<Integer, BlockState> entry : map.blocks().entrySet()) {
+                    int encodedCoordinates = entry.getKey();
+
+                    BlockState state = entry.getValue();
+                    if (state == null) state = Blocks.AIR.defaultBlockState();
+
+                    int paletteIndex = palette.indexOf(state);
+                    if (paletteIndex == -1) {
+                        palette.add(state);
+                        paletteIndex = palette.size() - 1;
+                    }
+
+                    CompoundTag blockTag = new CompoundTag();
+                    blockTag.put("pos", newIntegerList(
+                            MapArtImage.decodedX(encodedCoordinates),
+                            MapArtImage.decodedY(encodedCoordinates),
+                            MapArtImage.decodedZ(encodedCoordinates)
+                    ));
+                    blockTag.putInt("state", paletteIndex);
+                    blocklist.add(blockTag);
+                }
+            }
+        }
+        */
+
         for (int y = 0; y < height; y++) {
             for (int z = 0; z < length; z++) {
                 int localZ = z % MAP_SIZE;
                 int mapY = (z - localZ) / MAP_SIZE;
-                for (int x = 0; x < length; x++) {
+                for (int x = 0; x < width; x++) {
                     int localX = x % MAP_SIZE;
                     int mapX = (x - localX) / MAP_SIZE;
 
-                    BlockState state = (switch (maps[mapX][mapY]) {
-                        case MapArtImage.FlatMap flatMap -> flatMap.blockStates();
-                        default -> throw new IllegalStateException("Unexpected value: " + maps[mapX][mapY]);
-                    })[localX][y][localZ];
-
+                    BlockState state = maps[mapX][mapY].blocks().get(MapArtImage.encodedBlockCoordinates(localX, y, localZ));
                     if(state == null) state = Blocks.AIR.defaultBlockState();
 
                     int paletteIndex = palette.indexOf(state);
