@@ -12,13 +12,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.MapColor;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
 import org.joml.Vector2ic;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -36,9 +34,11 @@ public final class CPUImageProcessor implements ImageProcessor {
     private static final int WATER_HEIGHT_LOW = 7, WATER_HEIGHT_NORMAL = 5, WATER_HEIGHT_HIGH = 1;
 
     private final Executor executor;
+    private final @Nullable Executor executorForStairCasing;
 
-    public CPUImageProcessor(Executor executor) {
+    public CPUImageProcessor(Executor executor, @Nullable Executor executorForStairCasing) {
         this.executor = executor;
+        this.executorForStairCasing = executorForStairCasing;
     }
 
     @Override
@@ -128,7 +128,7 @@ public final class CPUImageProcessor implements ImageProcessor {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 int rgb = croppedView.getRGB(x, y);
-                if(out[x][y] == -1) continue;
+                if(out[x][y] == TRANSPARENCY_PLACEHOLDER) continue;
 
                 int nearestIndex = out[x][y] = DitheringUtil.findNearestColor(
                         DitheringUtil.clamp((rgb >> 16) & 0xFF),
@@ -181,22 +181,9 @@ public final class CPUImageProcessor implements ImageProcessor {
             for (int x = 0; x < targetBounds.x(); x++) {
                 for (int y = 0; y < targetBounds.y(); y++) {
                     int alpha = croppedView.alpha(x, y);
-                    if(alpha >= TRANSPARENCY_THRESHOLD) paletteIndices[x][y] = -1;
+                    if(alpha >= TRANSPARENCY_THRESHOLD) paletteIndices[x][y] = TRANSPARENCY_PLACEHOLDER;
                 }
             }
-        }
-
-        try (FileOutputStream outputStream = new FileOutputStream(new File("/home/just_lofe/IdeaProjects/MartyDevelopers/Marty/common/src/test/resources/pre_output.png"))) {
-            BufferedImage bufferedImage = new BufferedImage(croppedView.bounds.x(), croppedView.bounds.y(), BufferedImage.TYPE_INT_ARGB);
-            for (int x = 0; x < bufferedImage.getWidth(); x++) {
-                for (int y = 0; y < bufferedImage.getHeight(); y++) {
-                    bufferedImage.setRGB(x, y, croppedView.getRGB(x, y));
-                }
-            }
-            ImageIO.write(bufferedImage, "png", outputStream);
-        }
-        catch (Exception exception) {
-            throw new RuntimeException();
         }
 
         DitheringResult ditheringResult = Optional.ofNullable(work.dithering())
@@ -261,6 +248,9 @@ public final class CPUImageProcessor implements ImageProcessor {
                     maps[mapX][mapY] = new MapArtImage.Map(blocks, height);
                 }
             }
+        }
+        else {
+
         }
 
         return new MapArtImage(work.outputDimensionsInMaps(), maps);
