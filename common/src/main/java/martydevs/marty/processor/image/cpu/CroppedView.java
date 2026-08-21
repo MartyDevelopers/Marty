@@ -1,4 +1,4 @@
-package martydevs.marty.processor.cpu;
+package martydevs.marty.processor.image.cpu;
 
 import org.joml.Vector2i;
 import org.joml.Vector2ic;

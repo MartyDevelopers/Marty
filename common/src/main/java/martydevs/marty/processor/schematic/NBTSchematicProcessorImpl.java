@@ -5,7 +5,6 @@ import martydevs.marty.model.schematic.NBTSchematicProcessor;
 import martydevs.marty.model.schematic.NBTSchematicWork;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.*;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Vector2ic;
 
@@ -43,11 +42,6 @@ public final class NBTSchematicProcessorImpl implements NBTSchematicProcessor {
         int height = 1;
         int length = MAP_SIZE * dimensionsInMaps.y();
 
-        if(shadePreservingLine) {
-            ++length;
-            assert work.shadePreservingMaterial() != null;
-        }
-
         MapArtImage.Map[][] maps = source.maps();
         for (MapArtImage.Map[] row : maps) {
             for (MapArtImage.Map map : row) {
@@ -58,23 +52,23 @@ public final class NBTSchematicProcessorImpl implements NBTSchematicProcessor {
         PaletteBuilder paletteBuilder = new PaletteBuilder();
         ListTag blocklist = new ListTag();
         int baseZ = shadePreservingLine ? 1 : 0;
-        for (int y = 0; y < height; y++) {
-            for (int z = 0; z < length; z++) {
-                int localZ = z % MAP_SIZE;
-                int mapY = (z - localZ) / MAP_SIZE;
-                for (int x = 0; x < width; x++) {
-                    int localX = x % MAP_SIZE;
-                    int mapX = (x - localX) / MAP_SIZE;
+        for (int mapX = 0; mapX < dimensionsInMaps.x(); mapX++) {
+            int xOrigin = mapX * MAP_SIZE;
+            for (int mapY = 0; mapY < dimensionsInMaps.y(); mapY++) {
+                int zOrigin = mapY * MAP_SIZE;
 
-                    BlockState state = maps[mapX][mapY].blocks().get(MapArtImage.encodedBlockCoordinates(localX, y, localZ));
-                    if(state == null) state = Blocks.AIR.defaultBlockState();
+                Map<Integer, BlockState> blocks = work.source().maps()[mapX][mapY].blocks();
+                for (Map.Entry<Integer, BlockState> entry : blocks.entrySet()) {
+                    int x = xOrigin + MapArtImage.decodedX(entry.getKey());
+                    int y = MapArtImage.decodedY(entry.getKey()) + 128;
+                    int z = zOrigin + MapArtImage.decodedZ(entry.getKey());
 
                     CompoundTag blockTag = new CompoundTag();
                     blockTag.put("pos", newIntegerList(x, y, baseZ + z));
-                    blockTag.putInt("state", paletteBuilder.index(state));
+                    blockTag.putInt("state", paletteBuilder.index(entry.getValue()));
                     blocklist.add(blockTag);
 
-                    if(x == 0 && shadePreservingLine) {
+                    if(y == 0 && z == 0 && shadePreservingLine) {
                         CompoundTag block1Tag = new CompoundTag();
                         block1Tag.put("pos", newIntegerList(x, y, 0));
                         block1Tag.putInt("state", paletteBuilder.index(work.shadePreservingMaterial()));
@@ -89,7 +83,7 @@ public final class NBTSchematicProcessorImpl implements NBTSchematicProcessor {
         rootTag.put("blocks", blocklist);
 
         rootTag.putInt("DataVersion", SharedConstants.getCurrentVersion().dataVersion().version());
-        rootTag.put("size", newIntegerList(width, height, length));
+        rootTag.put("size", newIntegerList(width, height, work.addShadePreservingLine() ? length + 1 : length));
 
         byte[] result;
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -117,7 +111,7 @@ public final class NBTSchematicProcessorImpl implements NBTSchematicProcessor {
             int paletteIndex = palette.getOrDefault(state, -1);
             if (paletteIndex == -1) {
                 paletteIndex = index;
-                palette.put(state, ++index);
+                palette.put(state, index++);
             }
 
             return paletteIndex;
@@ -125,8 +119,8 @@ public final class NBTSchematicProcessorImpl implements NBTSchematicProcessor {
 
         ListTag build() {
             ListTag paletteTag = new ListTag();
-            for (Map.Entry<BlockState, Integer> entry : palette.sequencedEntrySet()) {
-                paletteTag.set(entry.getValue(), NbtUtils.writeBlockState(entry.getKey()));
+            for (BlockState state : palette.sequencedKeySet()) {
+                paletteTag.add(NbtUtils.writeBlockState(state));
             }
             return paletteTag;
         }

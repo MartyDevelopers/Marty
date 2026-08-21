@@ -1,4 +1,4 @@
-package martydevs.marty.processor.cpu.dithering;
+package martydevs.marty.processor.image.cpu.dithering;
 
 public record DitheringResult(int lowestWaterColorIndexUsed) {
 }

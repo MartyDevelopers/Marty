@@ -1,12 +1,13 @@
-package martydevs.marty.processor.cpu.dithering;
+package martydevs.marty.processor.image.cpu.dithering;
 
 import martydevs.marty.helper.MapColorHelper;
-import martydevs.marty.processor.cpu.CroppedView;
+import martydevs.marty.processor.image.cpu.CroppedView;
+import martydevs.marty.processor.image.cpu.PaletteEntry;
 
 public final class FloydSteinberg implements DitheringAlgorithm {
 
     @Override
-    public DitheringResult dither(CroppedView croppedView, boolean paletteIncludesWater, int[] palette, int[][] out) {
+    public DitheringResult dither(CroppedView croppedView, boolean paletteIncludesWater, PaletteEntry[] palette, int[][] out) {
         int width = croppedView.bounds.x();
         int height = croppedView.bounds.y();
         int totalPixels = width * height;
@@ -30,13 +31,13 @@ public final class FloydSteinberg implements DitheringAlgorithm {
 
                 int nearestIndex = DitheringUtil.findNearestColor(r, g, b, palette);
                 if(paletteIncludesWater) {
-                    int waterColorIndex = MapColorHelper.waterColorIndex(palette[nearestIndex]);
+                    int waterColorIndex = MapColorHelper.waterColorIndex(palette[nearestIndex].rgb());
                     if(waterColorIndex != -1 && waterColorIndex < lowestWaterColorIndex)
                         lowestWaterColorIndex = waterColorIndex;
                 }
                 out[x][y] = (byte) nearestIndex;
 
-                int nearestRgb = palette[nearestIndex];
+                int nearestRgb = palette[nearestIndex].rgb();
                 int nr = (nearestRgb >> 16) & 0xFF;
                 int ng = (nearestRgb >> 8) & 0xFF;
                 int nb = nearestRgb & 0xFF;

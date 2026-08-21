@@ -1,4 +1,4 @@
-package martydevs.marty.processor.gpu;
+package martydevs.marty.processor.image.gpu;
 
 import martydevs.marty.model.image.ImageProcessor;
 import martydevs.marty.model.image.ImageWork;

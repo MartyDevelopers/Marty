@@ -1,4 +1,6 @@
-package martydevs.marty.processor.cpu.dithering;
+package martydevs.marty.processor.image.cpu.dithering;
+
+import martydevs.marty.processor.image.cpu.PaletteEntry;
 
 public final class DitheringUtil {
 
@@ -16,12 +18,12 @@ public final class DitheringUtil {
      * @param palette palette of the colors for search
      * @return nearest color index
      */
-    public static int findNearestColor(int r, int g, int b, int[] palette) {
+    public static int findNearestColor(int r, int g, int b, PaletteEntry[] palette) {
         int nearestIndex = 0;
         int minDistance = Integer.MAX_VALUE;
 
         for (int i = 0; i < palette.length; i++) {
-            int rgb = palette[i];
+            int rgb = palette[i].rgb();
             int pr = (rgb >> 16) & 0xFF;
             int pg = (rgb >> 8) & 0xFF;
             int pb = rgb & 0xFF;

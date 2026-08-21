@@ -41,7 +41,9 @@ public interface BlockPalette {
 
         @Override
         public @Nullable Block blockForColor(MapColor color) {
-            return palette.get(color);
+            Block block = palette.get(color);
+            if(block == null) System.out.println("Not found " + color.id);
+            return block;
         }
 
         @Override

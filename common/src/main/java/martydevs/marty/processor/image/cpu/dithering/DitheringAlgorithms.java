@@ -1,4 +1,4 @@
-package martydevs.marty.processor.cpu.dithering;
+package martydevs.marty.processor.image.cpu.dithering;
 
 import martydevs.marty.model.image.Dithering;
 import org.jspecify.annotations.Nullable;

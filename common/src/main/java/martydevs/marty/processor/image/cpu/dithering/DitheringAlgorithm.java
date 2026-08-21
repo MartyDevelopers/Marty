@@ -1,7 +1,8 @@
-package martydevs.marty.processor.cpu.dithering;
+package martydevs.marty.processor.image.cpu.dithering;
 
 import martydevs.marty.annotation.ThreadSafe;
-import martydevs.marty.processor.cpu.CroppedView;
+import martydevs.marty.processor.image.cpu.CroppedView;
+import martydevs.marty.processor.image.cpu.PaletteEntry;
 
 @FunctionalInterface
 public interface DitheringAlgorithm {
@@ -13,6 +14,6 @@ public interface DitheringAlgorithm {
      * @param out byte array to write indices of colors from {@code palette}
      */
     @ThreadSafe
-    DitheringResult dither(CroppedView croppedView, boolean paletteIncludesWater, int[] palette, int[][] out);
+    DitheringResult dither(CroppedView croppedView, boolean paletteIncludesWater, PaletteEntry[] palette, int[][] out);
 
 }
