@@ -18,6 +18,8 @@ public interface ImageWork extends Work<MapArtImage> {
 
     @Nullable Dithering dithering();
 
+    @Nullable BetterColor betterColor();
+
     Cropping cropping();
 
     boolean useTransparency();
@@ -30,6 +32,7 @@ public interface ImageWork extends Work<MapArtImage> {
             Vector2ic outputDimensionsInMaps,
             boolean useStairCasing,
             @Nullable Dithering dithering,
+            @Nullable BetterColor betterColor,
             Cropping cropping,
             boolean useTransparency,
             WaterPalette waterPalette

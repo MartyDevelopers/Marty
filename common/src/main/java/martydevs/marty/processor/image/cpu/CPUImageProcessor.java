@@ -1,10 +1,12 @@
 package martydevs.marty.processor.image.cpu;
 
-import martydevs.marty.annotation.ThreadSafe;
 import martydevs.marty.executor.SameThreadExecutor;
-import martydevs.marty.helper.MapColorHelper;
+import martydevs.marty.helper.map.MapColorHelper;
+import martydevs.marty.helper.map.PaletteEntry;
 import martydevs.marty.model.image.*;
 import martydevs.marty.model.work.WorkProgressListener;
+import martydevs.marty.processor.image.cpu.color.NearestColorAlgorithm;
+import martydevs.marty.processor.image.cpu.color.NearestColorAlgorithms;
 import martydevs.marty.processor.image.cpu.dithering.DitheringAlgorithms;
 import martydevs.marty.processor.image.cpu.dithering.DitheringResult;
 import martydevs.marty.processor.image.cpu.dithering.DitheringUtil;
@@ -18,7 +20,9 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
 import org.joml.Vector2ic;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.FileOutputStream;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -129,38 +133,19 @@ public final class CPUImageProcessor implements ImageProcessor {
         while (mapColorIterator.hasNext()) {
             MapColor mapColor = mapColorIterator.next();
 
-            if(!stairCasing)
-                palette[individualIndex] = new PaletteEntry(MapColorHelper.rgbValue(mapColor), mapColor, MapColor.Brightness.NORMAL);
-            else {
-                for (int i = 0; i < 3; i++) {
-                    MapColor.Brightness brightness = MapColor.Brightness.byId(i);
-                    palette[individualIndex * 3 + i] = new PaletteEntry(
-                            MapColorHelper.scaledRgbValue(mapColor, brightness),
-                            mapColor,
-                            brightness
-                    );
-                }
-            }
+            if(!stairCasing) palette[individualIndex] = MapColorHelper.paletteEntries(mapColor)[1];
+            else System.arraycopy(MapColorHelper.paletteEntries(mapColor), 0, palette, individualIndex * 3, 3);
 
             ++individualIndex;
         }
 
-        if(water) {
-            int startIndex = palette.length - 3;
-            for (int i = 0; i < 3; i++) {
-                MapColor.Brightness brightness = MapColor.Brightness.byId(i);
-                palette[startIndex + i] = new PaletteEntry(
-                        MapColorHelper.scaledRgbValue(MapColor.WATER, brightness),
-                        MapColor.WATER,
-                        brightness
-                );
-            }
-        }
+        if(water)
+            System.arraycopy(MapColorHelper.paletteEntries(MapColor.WATER), 0, palette, palette.length - 3, 3);
 
         return palette;
     }
 
-    private static DitheringResult ditherByNearest(CroppedView croppedView, boolean paletteIncludesWater, PaletteEntry[] palette, int[][] out) {
+    private static DitheringResult ditherByNearest(CroppedView croppedView, NearestColorAlgorithm nearestColorAlgorithm, boolean paletteIncludesWater, PaletteEntry[] palette, int[][] out) {
         int width = croppedView.bounds.x();
         int height = croppedView.bounds.y();
 
@@ -171,7 +156,7 @@ public final class CPUImageProcessor implements ImageProcessor {
                 int rgb = croppedView.getRGB(x, y);
                 if(out[x][y] == TRANSPARENCY_PLACEHOLDER) continue;
 
-                int nearestIndex = out[x][y] = DitheringUtil.findNearestColor(
+                int nearestIndex = out[x][y] = nearestColorAlgorithm.findNearestColor(
                         DitheringUtil.clamp((rgb >> 16) & 0xFF),
                         DitheringUtil.clamp((rgb >> 8) & 0xFF),
                         DitheringUtil.clamp(rgb & 0xFF),
@@ -179,7 +164,7 @@ public final class CPUImageProcessor implements ImageProcessor {
                 );
 
                 if(paletteIncludesWater) {
-                    int waterColorIndex = MapColorHelper.waterColorIndex(palette[nearestIndex].rgb());
+                    int waterColorIndex = palette[nearestIndex].waterColorIndex();
                     if(waterColorIndex != -1 && waterColorIndex < lowestWaterColorIndex)
                         lowestWaterColorIndex = waterColorIndex;
                 }
@@ -229,8 +214,8 @@ public final class CPUImageProcessor implements ImageProcessor {
                             continue;
                         }
 
-                        int rgb = palette[colorIndex].rgb();
-                        int waterIndex = MapColorHelper.waterColorIndex(rgb);
+                        PaletteEntry paletteEntry = palette[colorIndex];
+                        int waterIndex = paletteEntry.waterColorIndex();
                         if(waterIndex != -1) {
                             int waterHeight = waterHeightByColorIndex(waterIndex);
 
@@ -245,10 +230,7 @@ public final class CPUImageProcessor implements ImageProcessor {
                             continue;
                         }
 
-                        MapColor color = MapColorHelper.colorByRgbValue(rgb);
-                        assert color != null;
-                        Block block = work.blockPalette().blockForColor(color);
-
+                        Block block = work.blockPalette().blockForColor(paletteEntry.mapColor());
                         blocks.put(
                                 encodedCoordinates,
                                 block.defaultBlockState()
@@ -278,10 +260,19 @@ public final class CPUImageProcessor implements ImageProcessor {
             linesPerTask = width / tasksCount;
         }
 
+        float progressPerLine = (1 - MAP_CONSTRUCTING_PROGRESS_BASE) / width;
+
         Map<Integer, BlockState>[][] flatMaps = new Map[maps.length][maps[0].length];
+        for (int x = 0; x < maps.length; x++) {
+            for (int y = 0; y < maps[x].length; y++) {
+                flatMaps[x][y] = new ConcurrentHashMap<>();
+            }
+        }
+
         CompletableFuture<Void>[] tasks = new CompletableFuture[tasksCount];
 
         AtomicInteger heightAtomic = new AtomicInteger(1);
+        AtomicInteger linesDone = new AtomicInteger(0);
         AtomicBoolean calculationsLock = new AtomicBoolean(false);
 
         int[] lineMinimumY = new int[width];
@@ -305,7 +296,6 @@ public final class CPUImageProcessor implements ImageProcessor {
                         if(previousY < minimumY) minimumY = previousY;
 
                         Map<Integer, BlockState> map = flatMaps[mapX][mapY];
-                        if(map == null) map = flatMaps[mapX][mapY] = new ConcurrentHashMap<>();
 
                         int colorIndex = paletteIndices[x][z];
                         if(colorIndex == TRANSPARENCY_PLACEHOLDER) {
@@ -314,7 +304,7 @@ public final class CPUImageProcessor implements ImageProcessor {
                         }
 
                         PaletteEntry paletteEntry = palette[colorIndex];
-                        int waterIndex = MapColorHelper.waterColorIndex(paletteEntry.rgb());
+                        int waterIndex = paletteEntry.waterColorIndex();
                         if(waterIndex != -1) {
                             int waterHeight = waterHeightByColorIndex(waterIndex);
 
@@ -346,6 +336,8 @@ public final class CPUImageProcessor implements ImageProcessor {
                 while (!calculationsLock.compareAndSet(false, true)) {
                     Thread.onSpinWait();
                 }
+
+                progressUpdate(work, progressPerLine * (float) linesDone.getAndIncrement());
 
                 int sectionHeight = maximumY + Math.abs(minimumY) + 1;
                 if(sectionHeight > heightAtomic.get()) heightAtomic.set(sectionHeight);
@@ -384,7 +376,6 @@ public final class CPUImageProcessor implements ImageProcessor {
         }
     }
 
-    @ThreadSafe
     private MapArtImage doWork(ImageWork work) {
         progressUpdate(work, 0);
 
@@ -420,7 +411,29 @@ public final class CPUImageProcessor implements ImageProcessor {
         DitheringResult ditheringResult = Optional.ofNullable(work.dithering())
                 .map(DitheringAlgorithms::algorithm)
                 .orElse(CPUImageProcessor::ditherByNearest)
-                .dither(croppedView, work.waterPalette().enabled(), palette, paletteIndices);
+                .dither(
+                        croppedView,
+                        Optional.ofNullable(work.betterColor())
+                                .map(NearestColorAlgorithms::algorithm)
+                                .orElse(DitheringUtil::findNearestColor),
+                        work.waterPalette().enabled(),
+                        palette,
+                        paletteIndices
+                );
+
+        try (FileOutputStream fos = new FileOutputStream("/home/just_lofe/IdeaProjects/MartyDevelopers/Marty/common/src/test/resources/pre_output.png")){
+            BufferedImage bufferedImage = new BufferedImage(targetBounds.x, targetBounds.y, BufferedImage.TYPE_INT_RGB);
+            for (int x = 0; x < targetBounds.x; x++) {
+                for (int y = 0; y < targetBounds.y; y++) {
+                    bufferedImage.setRGB(x, y, palette[paletteIndices[x][y]].rgb());
+                }
+            }
+            ImageIO.write(bufferedImage, "png", fos);
+        }
+        catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
+
         progressUpdate(work, DITHERING_PROGRESS);
 
         // Constructing map

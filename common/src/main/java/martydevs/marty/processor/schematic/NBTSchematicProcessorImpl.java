@@ -68,7 +68,7 @@ public final class NBTSchematicProcessorImpl implements NBTSchematicProcessor {
                     blockTag.putInt("state", paletteBuilder.index(entry.getValue()));
                     blocklist.add(blockTag);
 
-                    if(y == 0 && z == 0 && shadePreservingLine) {
+                    if(z == 0 && shadePreservingLine) {
                         CompoundTag block1Tag = new CompoundTag();
                         block1Tag.put("pos", newIntegerList(x, y, 0));
                         block1Tag.putInt("state", paletteBuilder.index(work.shadePreservingMaterial()));

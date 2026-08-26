@@ -1,6 +1,6 @@
 package martydevs.marty.processor.image.cpu.dithering;
 
-import martydevs.marty.processor.image.cpu.PaletteEntry;
+import martydevs.marty.helper.map.PaletteEntry;
 
 public final class DitheringUtil {
 

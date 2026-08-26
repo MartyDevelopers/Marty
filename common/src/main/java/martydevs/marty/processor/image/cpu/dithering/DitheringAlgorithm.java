@@ -1,8 +1,8 @@
 package martydevs.marty.processor.image.cpu.dithering;
 
-import martydevs.marty.annotation.ThreadSafe;
 import martydevs.marty.processor.image.cpu.CroppedView;
-import martydevs.marty.processor.image.cpu.PaletteEntry;
+import martydevs.marty.helper.map.PaletteEntry;
+import martydevs.marty.processor.image.cpu.color.NearestColorAlgorithm;
 
 @FunctionalInterface
 public interface DitheringAlgorithm {
@@ -13,7 +13,6 @@ public interface DitheringAlgorithm {
      * @param palette rgb values allowed to use
      * @param out byte array to write indices of colors from {@code palette}
      */
-    @ThreadSafe
-    DitheringResult dither(CroppedView croppedView, boolean paletteIncludesWater, PaletteEntry[] palette, int[][] out);
+    DitheringResult dither(CroppedView croppedView, NearestColorAlgorithm nearestColorAlgorithm, boolean paletteIncludesWater, PaletteEntry[] palette, int[][] out);
 
 }
