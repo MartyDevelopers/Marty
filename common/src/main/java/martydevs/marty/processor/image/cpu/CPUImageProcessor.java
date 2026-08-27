@@ -20,9 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
 import org.joml.Vector2ic;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.FileOutputStream;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -420,19 +418,6 @@ public final class CPUImageProcessor implements ImageProcessor {
                         palette,
                         paletteIndices
                 );
-
-        try (FileOutputStream fos = new FileOutputStream("/home/just_lofe/IdeaProjects/MartyDevelopers/Marty/common/src/test/resources/pre_output.png")){
-            BufferedImage bufferedImage = new BufferedImage(targetBounds.x, targetBounds.y, BufferedImage.TYPE_INT_RGB);
-            for (int x = 0; x < targetBounds.x; x++) {
-                for (int y = 0; y < targetBounds.y; y++) {
-                    bufferedImage.setRGB(x, y, palette[paletteIndices[x][y]].rgb());
-                }
-            }
-            ImageIO.write(bufferedImage, "png", fos);
-        }
-        catch (Exception exception) {
-            throw new RuntimeException(exception);
-        }
 
         progressUpdate(work, DITHERING_PROGRESS);
 
